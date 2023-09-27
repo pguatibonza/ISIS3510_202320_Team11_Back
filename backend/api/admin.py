@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Trailer,User,Load,AccessPoint ,Trip
+from .models.trailer import Trailer
+from .models.user import User
+from .models.load import Load
+from .models.accespoint import AccessPoint
+from .models.trip import Trip
 
 
 admin.site.register(Trailer)
