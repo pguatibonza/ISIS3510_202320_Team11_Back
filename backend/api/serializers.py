@@ -1,9 +1,6 @@
 from rest_framework import serializers
-from .models.trip import Trip
-from .models.user import User
-from .models.load import Load
-from .models.trailer import Trailer
-from .models.accespoint import AccessPoint
+from .models import Trip,User,Load,Trailer,AccessPoint
+
 #implement business logic here
 class UserSerializer(serializers.ModelSerializer):
     
