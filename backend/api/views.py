@@ -1,20 +1,16 @@
 from django.shortcuts import render
 from rest_framework import generics
-from .models.trip import Trip
-from .models.user import User
-from .models.load import Load
-from .models.trailer import Trailer
-from .models.accespoint import AccessPoint
+from .models import User,Trip,Load,Trailer,AccessPoint
 
-from .serializers import UserSerializer,LoadSerializer,TrailerSerializer,AccessPointSerializer,TripSerializer
+from .serializers import LoadSerializer,TrailerSerializer,AccessPointSerializer,TripSerializer
 # Create your views here.
 # GET POST UPDATE DELETE
-class UserGetCreate(generics.ListCreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-class UserUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+# class UserGetCreate(generics.ListCreateAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
+# class UserUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer
 
 
 class LoadGetCreate(generics.ListCreateAPIView):
