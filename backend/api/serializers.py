@@ -1,18 +1,33 @@
 from rest_framework import serializers
-from .models import Trip,User,Load,Trailer,AccessPoint
-
+from .models import Trip,Load,Trailer,AccessPoint
+from dj_rest_auth.serializers import LoginSerializer
+from dj_rest_auth.registration.serializers import RegisterSerializer
+class NewLoginSerializer(LoginSerializer):
+    pass
+class NewRegisterSerializer(RegisterSerializer):
+    name=serializers.CharField(max_length=50)
+    lastName=serializers.CharField(max_length=50)
+    userType=serializers.CharField(max_length=2)
+    phone=serializers.CharField(max_length=15)
+    def custom_signup(self, request, user):
+        user.name=request.data['name']
+        user.last_name=request.data['lastName']
+        user.userType=request.data['userType']
+        user.phone=request.data['phone']
+        user.save()
+         
 #implement business logic here
-class UserSerializer(serializers.ModelSerializer):
+# class UserSerializer(serializers.ModelSerializer):
     
-    class Meta:
-        model = User
-        fields = '__all__'
+#     class Meta:
+#         model = User
+#         fields = '__all__'
 
-    def validate_email(self,value):
-        user_id = self.instance.id if self.instance else None  # Exclude current user when updating
-        if User.objects.filter(email=value).exclude(id=user_id).exists():
-            raise serializers.ValidationError("Email already exists.")
-        return value
+#     def validate_email(self,value):
+#         user_id = self.instance.id if self.instance else None  # Exclude current user when updating
+#         if User.objects.filter(email=value).exclude(id=user_id).exists():
+#             raise serializers.ValidationError("Email already exists.")
+#         return value
 
 class LoadSerializer(serializers.ModelSerializer):
     class Meta:

@@ -2,7 +2,7 @@ from django.shortcuts import render
 from rest_framework import generics
 from .models import User,Trip,Load,Trailer,AccessPoint
 
-from .serializers import UserSerializer,LoadSerializer,TrailerSerializer,AccessPointSerializer,TripSerializer
+from .serializers import LoadSerializer,TrailerSerializer,AccessPointSerializer,TripSerializer
 # Create your views here.
 # GET POST UPDATE DELETE
 # class UserGetCreate(generics.ListCreateAPIView):

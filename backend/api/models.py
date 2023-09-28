@@ -1,20 +1,27 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from datetime import datetime
+from django.contrib.auth.models import AbstractUser
 
-class User(models.Model):
+class User(AbstractUser):
 
     class UserType(models.TextChoices):
         LOADOWNER = 'LO', _('LoadOwner')
         DRIVER = 'DR',_('Driver')
         TRAILEROWNER = 'TO',_('TrailerOwner')
+
+    username=None
     
     name=models.CharField(max_length=50)
     lastName=models.CharField(max_length=50)
-    email=models.EmailField(max_length=254)
+    email=models.EmailField(max_length=254,unique=True)
     password=models.CharField(max_length=50)
-    phone=models.CharField(max_length=10)
+    phone=models.CharField(max_length=15)
     userType=models.CharField(max_length=2,choices=UserType.choices,default=UserType.LOADOWNER)
+    EMAIL_FIELD='email'
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
     def __str__(self):
         return self.name + " " + self.lastName + " " + self.email + " " + self.phone + " " + self.userType
 
