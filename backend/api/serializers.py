@@ -80,3 +80,16 @@ class TripSerializer(serializers.ModelSerializer):
         if value.userType != 'LO':
             raise serializers.ValidationError("User must be LoadOwner.")
         return value 
+
+class AssignTripTrailerSerializer(serializers.Serializer):
+    trailer_id = serializers.IntegerField()
+    def validate_trailer_id(self, value):
+        try:
+            trailer = Trailer.objects.get(pk=value)
+        except Trailer.DoesNotExist:
+            raise serializers.ValidationError("Trailer does not exist.")
+        
+        if trailer.status != Trailer.TrailerStatus.AVAILABLE:
+            raise serializers.ValidationError("Trailer is not available for assignment.")
+
+        return value
