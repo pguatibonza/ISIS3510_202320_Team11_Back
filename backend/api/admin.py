@@ -1,3 +1,10 @@
 from django.contrib import admin
+from .models import Trailer,User,Load,AccessPoint,Trip
 
-# Register your models here.
+
+admin.site.register(Trailer)
+admin.site.register(User)
+admin.site.register(Load)
+admin.site.register(AccessPoint)
+admin.site.register(Trip)
+
