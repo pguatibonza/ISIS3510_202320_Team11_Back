@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Trip,Load,Trailer,AccessPoint
+from .models import Trip,Load,Trailer,AccessPoint,User
 from dj_rest_auth.serializers import LoginSerializer
 from dj_rest_auth.registration.serializers import RegisterSerializer
 class NewLoginSerializer(LoginSerializer):
@@ -17,17 +17,17 @@ class NewRegisterSerializer(RegisterSerializer):
         user.save()
          
 #implement business logic here
-# class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     
-#     class Meta:
-#         model = User
-#         fields = '__all__'
+    class Meta:
+        model = User
+        fields = '__all__'
 
-#     def validate_email(self,value):
-#         user_id = self.instance.id if self.instance else None  # Exclude current user when updating
-#         if User.objects.filter(email=value).exclude(id=user_id).exists():
-#             raise serializers.ValidationError("Email already exists.")
-#         return value
+    def validate_email(self,value):
+        user_id = self.instance.id if self.instance else None  # Exclude current user when updating
+        if User.objects.filter(email=value).exclude(id=user_id).exists():
+            raise serializers.ValidationError("Email already exists.")
+        return value
 
 class LoadSerializer(serializers.ModelSerializer):
     class Meta:

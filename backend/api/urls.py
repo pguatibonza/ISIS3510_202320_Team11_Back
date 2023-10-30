@@ -1,11 +1,12 @@
 from django.contrib import admin
 from django.urls import path
 from django.urls.conf import include
-from .views import LoadGetCreate,LoadUpdateDelete,TrailerGetCreate,TrailerUpdateDelete,AccessPointGetCreate,AccessPointUpdateDelete,TripGetCreate,TripUpdateDelete, AssignTripTrailer, generateReport
+from .views import LoadGetCreate,LoadUpdateDelete,TrailerGetCreate,TrailerUpdateDelete,AccessPointGetCreate,AccessPointUpdateDelete,TripGetCreate,TripUpdateDelete, AssignTripTrailer,UserGetCreate,UserUpdateDelete, generateReport
 urlpatterns = [
     # path('',UserGetCreate.as_view()), 
-    # path('users',UserGetCreate.as_view()), 
-    # path('users/<int:pk>', UserUpdateDelete.as_view()),
+     path('users',UserGetCreate.as_view()), 
+    path('users/<int:pk>', UserUpdateDelete.as_view()),
+
     path('auth/',include('dj_rest_auth.urls')),
     path('auth/registration/',include('dj_rest_auth.registration.urls')),
     
