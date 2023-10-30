@@ -26,7 +26,12 @@ class UserUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+class UserGetByEmail(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'email'  # Use email as the lookup field
 
+    
 class LoadGetCreate(generics.ListCreateAPIView):
     queryset = Load.objects.all()
     serializer_class = LoadSerializer
