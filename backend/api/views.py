@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics
-from .models import User,Trip,Load,Trailer,AccessPoint
+from .models import User,Trip,Load,Trailer,AccessPoint,ExecutionTime
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
@@ -14,10 +14,6 @@ from datetime import datetime
 
 from django.db import OperationalError
 import time
-
-
-
-
 
 from .serializers import LoadSerializer,TrailerSerializer,AccessPointSerializer,TripSerializer,AssignTripTrailerSerializer,UserSerializer
 # Create your views here.
@@ -72,6 +68,7 @@ class AssignTripTrailer(generics.UpdateAPIView):
     lookup_url_kwarg = 'trip_id'
 
     def update(self, request, *args, **kwargs):
+        start_time = time.time()
         trip = self.get_object()
         serializer = AssignTripTrailerSerializer(data=request.data)
         if serializer.is_valid():
@@ -91,6 +88,10 @@ class AssignTripTrailer(generics.UpdateAPIView):
             #Changes Trailer status
             trailer.status = Trailer.TrailerStatus.INTRANSIT
             trailer.save()
+
+            end_time = time.time()
+            execution_time = int((end_time - start_time) * 1000)
+            ExecutionTime.objects.create(function="update-triptrailer-function", duration=execution_time)
 
             return Response({'detail': f'Trailer {trailer_id} assigned to trip {trip.id}.'}, status=status.HTTP_200_OK)
         else:
@@ -195,6 +196,7 @@ def getTop3RoutesByPickupAndDropoff():
 
         
 def generateReport(req):
+    start_time = time.time()
     print("Generating report...")
 
     # Serialize the data into a JSON object
@@ -222,9 +224,11 @@ def generateReport(req):
     send_email_alert(report_string)
 
     response = JsonResponse(report_data, status=200)
-    
-    return response
+    end_time = time.time()
+    execution_time = int((end_time - start_time) * 1000)
+    ExecutionTime.objects.create(function="generate-report-function", duration=execution_time)
 
+    return response
 
 
 def send_email_alert(report_string):
