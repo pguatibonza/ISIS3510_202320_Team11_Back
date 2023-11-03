@@ -12,6 +12,9 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
+from django.db import OperationalError
+import time
+
 
 
 
@@ -93,59 +96,113 @@ class AssignTripTrailer(generics.UpdateAPIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
+def getTop3MostCommonLoadTypes():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            load_types_data = Load.objects.values('type') \
+                .annotate(load_type_count=Count('type')) \
+                .order_by('-load_type_count')[:3]  # Get the top 3 most common types
+            return [
+                {
+                    'type': item['type'],
+                    'count': item['load_type_count']
+                }
+                for item in load_types_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+def getTop3MostCommonTrailerTypes():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            trailer_types_data = Trailer.objects.values('type') \
+                .annotate(trailer_type_count=Count('type')) \
+                .order_by('-trailer_type_count')[:3]  # Get the top 3 most common types
+            return [
+                {
+                    'type': item['type'],
+                    'count': item['trailer_type_count']
+                }
+                for item in trailer_types_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+    
+def getTopUsedCities():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            access_point_cities_data = AccessPoint.objects.values('city') \
+                .annotate(city_count=Count('city')) \
+                .order_by('-city_count')[:3]  # Get the top 3 most used cities
+            return [
+                {
+                    'city': item['city'],
+                    'count': item['city_count']
+                }
+                for item in access_point_cities_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+def getTop3RoutesByPickupAndDropoff():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            trip_routes_data = Trip.objects.values('pickup__city', 'dropoff__city') \
+                .annotate(route_count=Count('*')) \
+                .order_by('-route_count')[:3]  # Get the top 3 routes by pickup and dropoff cities
+            return [
+                {
+                    'pickup_city': item['pickup__city'],
+                    'dropoff_city': item['dropoff__city'],
+                    'count': item['route_count']
+                }
+                for item in trip_routes_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+        
 def generateReport(req):
     print("Generating report...")
 
-    load_types_data = Load.objects.values('type') \
-        .annotate(load_type_count=Count('type')) \
-        .order_by('-load_type_count')[:3]  # Get the top 3 most common types
-
-    # Query the Trailer model to get the most common Trailer types
-    trailer_types_data = Trailer.objects.values('type') \
-        .annotate(trailer_type_count=Count('type')) \
-        .order_by('-trailer_type_count')[:3]  # Get the top 3 most common types
-
-    # Query the AccessPoint model to get the top 3 used cities
-    access_point_cities_data = AccessPoint.objects.values('city') \
-        .annotate(city_count=Count('city')) \
-        .order_by('-city_count')[:3]  # Get the top 3 most used cities
-
-    # Query the Trip model to get the top 3 routes
-    trip_routes_data = Trip.objects.values('pickup__city', 'dropoff__city') \
-        .annotate(route_count=Count('*')) \
-        .order_by('-route_count')[:3]  # Get the top 3 routes by pickup and dropoff cities
-
     # Serialize the data into a JSON object
     report_data = {
-        'most_common_load_types': [
-            {
-                'type': item['type'],
-                'count': item['load_type_count']
-            }
-            for item in load_types_data
-        ],
-        'most_common_trailer_types': [
-            {
-                'type': item['type'],
-                'count': item['trailer_type_count']
-            }
-            for item in trailer_types_data
-        ],
-        'top_used_cities': [
-            {
-                'city': item['city'],
-                'count': item['city_count']
-            }
-            for item in access_point_cities_data
-        ],
-        'top_trip_routes': [
-            {
-                'pickup_city': item['pickup__city'],
-                'dropoff_city': item['dropoff__city'],
-                'count': item['route_count']
-            }
-            for item in trip_routes_data
-        ]
+        'most_common_load_types': getTop3MostCommonLoadTypes(),
+        'most_common_trailer_types': getTop3MostCommonTrailerTypes(),
+        'top_used_cities': getTopUsedCities(),
+        'top_trip_routes': getTop3RoutesByPickupAndDropoff()
     }
     # Generar strings para los top load types
     top_load_types = "\n".join([f"El tipo de carga {item['type']} aparece {item['count']} veces" for item in report_data['most_common_load_types']])
@@ -164,7 +221,6 @@ def generateReport(req):
 
     send_email_alert(report_string)
 
-    print("Email with report sent!")
     response = JsonResponse(report_data, status=200)
     
     return response
@@ -172,21 +228,37 @@ def generateReport(req):
 
 
 def send_email_alert(report_string):
-    recipients = ['juanddiaz13@gmail.com']  # Lista de destinatarios
+    recipients = ['juanddiaz13@gmail.com']  # List of recipients
 
-    for recipient in recipients:
-        msg = MIMEMultipart()
-        password = "xyqe sfyk wezi eusn"
-        msg['From'] = "juanddiaz13@gmail.com"
-        msg['Subject'] = f"Analytics Engine Report - {datetime.now().strftime('%Y-%m-%d')}"
-        msg['To'] = recipient
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            for recipient in recipients:
+                msg = MIMEMultipart()
+                password = "xyqe sfyk wezi eusn"
+                msg['From'] = "juanddiaz13@gmail.com"
+                msg['Subject'] = f"Analytics Engine Report - {datetime.now().strftime('%Y-%m-%d')}"
+                msg['To'] = recipient
 
-        # Adjuntar la cadena decodificada al correo electrónico
-        msg.attach(MIMEText(report_string))
+                # Attach the decoded string to the email
+                msg.attach(MIMEText(report_string))
 
-        server = smtplib.SMTP('smtp.gmail.com',587)
-        server.starttls()
-        server.login(msg['From'], password)
-        server.sendmail(msg['From'], msg['To'], msg.as_string())
-        server.quit()
+                server = smtplib.SMTP('smtp.gmail.com', 587)
+                server.starttls()
+                server.login(msg['From'], password)
+                server.sendmail(msg['From'], msg['To'], msg.as_string())
+                server.quit()
+
+            print("Email with report sent!")
+            break  # Break out of the retry loop upon successful email sending
+
+        except smtplib.SMTPException as e:
+            print(f"Email sending failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Email couldn't be sent.")
+                # Consider raising an exception or logging the failure
+                break  # Break out of the retry loop after all attempts
 
