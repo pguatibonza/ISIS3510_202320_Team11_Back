@@ -46,6 +46,13 @@ class TrailerGetCreate(generics.ListCreateAPIView):
 class TrailerUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trailer.objects.all()
     serializer_class = TrailerSerializer
+class TrailersGetByOwnerId(generics.ListAPIView):
+    serializer_class = TrailerSerializer
+    lookup_field = 'owner'
+    
+    def get_queryset(self):
+        owner_id = self.kwargs['owner']
+        return Trailer.objects.filter(owner=owner_id)
 
 class AccessPointGetCreate(generics.ListCreateAPIView):
     queryset = AccessPoint.objects.all()
