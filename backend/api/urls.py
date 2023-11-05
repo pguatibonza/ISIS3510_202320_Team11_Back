@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.urls.conf import include
-from .views import LoadGetCreate,LoadUpdateDelete,TrailerGetCreate,TrailersGetByOwnerId,TrailerUpdateDelete,AccessPointGetCreate,AccessPointUpdateDelete,TripGetCreate,TripUpdateDelete, AssignTripTrailer,UserGetCreate,UserUpdateDelete,UserGetByEmail, generateReport
+from .views import LoadGetCreate,LoadUpdateDelete,TrailerGetCreate,TrailersGetByOwnerId,TrailerUpdateDelete,AccessPointGetCreate,AccessPointUpdateDelete,TripGetCreate,TripUpdateDelete, AssignTripTrailer,UserGetCreate,UserUpdateDelete,UserGetByEmail, generateReport, TripsGetByTrailerId
 urlpatterns = [
     # path('',UserGetCreate.as_view()), 
      path('users',UserGetCreate.as_view()), 
@@ -24,6 +24,7 @@ urlpatterns = [
 
     path('trips',TripGetCreate.as_view()),
     path('trips/<int:pk>',TripUpdateDelete.as_view()),
+    path('trips/trailer/<int:trailer>',TripsGetByTrailerId.as_view()),
 
     path('assign-trailer/<int:trip_id>/', AssignTripTrailer.as_view()),
 

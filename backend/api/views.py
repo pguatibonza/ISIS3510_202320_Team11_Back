@@ -66,6 +66,14 @@ class TripGetCreate(generics.ListCreateAPIView):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
 
+class TripsGetByTrailerId(generics.ListAPIView):
+    serializer_class = TripSerializer
+    lookup_field = 'trailer'
+    
+    def get_queryset(self):
+        trailer_id = self.kwargs['trailer']
+        return Trip.objects.filter(trailer=trailer_id)
+
 class TripUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
