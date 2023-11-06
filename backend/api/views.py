@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics
+from rest_framework.views import APIView
 from .models import User,Trip,Load,Trailer,AccessPoint
 from rest_framework.response import Response
 from rest_framework import status
@@ -65,6 +66,15 @@ class AccessPointUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
 class TripGetCreate(generics.ListCreateAPIView):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
+
+class TripsByTrailerStatusView(APIView):
+    def get(self, request, trailer_id, status):
+        trips = Trip.objects.filter(trailer=trailer_id, status=status)
+        if trips.exists():
+            serializer = TripSerializer(trips, many=True)
+            return Response(serializer.data)
+        else:
+            return Response([], status=status.HTTP_404_NOT_FOUND)
 
 class TripsGetByTrailerId(generics.ListAPIView):
     serializer_class = TripSerializer
