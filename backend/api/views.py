@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework import generics
 from .models import User,Trip,Load,Trailer,AccessPoint,ExecutionTime
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
@@ -45,6 +46,13 @@ class TrailerGetCreate(generics.ListCreateAPIView):
 class TrailerUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trailer.objects.all()
     serializer_class = TrailerSerializer
+class TrailersGetByOwnerId(generics.ListAPIView):
+    serializer_class = TrailerSerializer
+    lookup_field = 'owner'
+    
+    def get_queryset(self):
+        owner_id = self.kwargs['owner']
+        return Trailer.objects.filter(owner=owner_id)
 
 class AccessPointGetCreate(generics.ListCreateAPIView):
     queryset = AccessPoint.objects.all()
@@ -57,6 +65,23 @@ class AccessPointUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
 class TripGetCreate(generics.ListCreateAPIView):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
+
+class TripsByTrailerStatusView(APIView):
+    def get(self, request, trailer_id, status):
+        trips = Trip.objects.filter(trailer=trailer_id, status=status)
+        if trips.exists():
+            serializer = TripSerializer(trips, many=True)
+            return Response(serializer.data)
+        else:
+            return Response([], status=status.HTTP_404_NOT_FOUND)
+
+class TripsGetByTrailerId(generics.ListAPIView):
+    serializer_class = TripSerializer
+    lookup_field = 'trailer'
+    
+    def get_queryset(self):
+        trailer_id = self.kwargs['trailer']
+        return Trip.objects.filter(trailer=trailer_id)
 
 class TripUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trip.objects.all()
