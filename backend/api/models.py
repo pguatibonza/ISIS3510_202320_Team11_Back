@@ -77,6 +77,20 @@ class AccessPoint(models.Model):
     def __str__(self):
         return self.country + " " + self.city + " " + self.address
 
+class ExecutionTime(models.Model):
+    function=models.CharField(max_length=50)
+    duration=models.IntegerField()
+
+    def __str__(self):
+        return f"{self.function} - {self.duration} ms"
+    
+class ErrorLogs(models.Model):
+    function=models.CharField(max_length=50)
+    error_message=models.TextField() 
+
+    def __str__(self):
+        return f"{self.function}  {self.error_message} "
+
 class Trip(models.Model):
     class Status(models.TextChoices):
         DELIVERED='DE',_('Delivered')
