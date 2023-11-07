@@ -218,6 +218,55 @@ def getTop3RoutesByPickupAndDropoff():
                 print("All attempts failed. Database is currently unreachable.")
                 # Consider raising an exception or logging the failure
                 return []  # Return empty list or handle as needed
+    
+def getTopDropoffPlaces():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            trip_routes_data = Trip.objects.values('dropoff__city') \
+                .annotate(route_count=Count('*')) \
+                .order_by('-route_count')[:3]  # Get the top 3 routes by pickup and dropoff cities
+            return [
+                {
+                    'dropoff__city': item['dropoff__city'],
+                    'count': item['route_count']
+                }
+                for item in trip_routes_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+def getTopPickupPlaces():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            trip_routes_data = Trip.objects.values('pickup__city') \
+                .annotate(route_count=Count('*')) \
+                .order_by('-route_count')[:3]  # Get the top 3 routes by pickup and dropoff cities
+            return [
+                {
+                    'pickup__city': item['pickup__city'],
+                    'count': item['route_count']
+                }
+                for item in trip_routes_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
 
         
 def generateReport(req):
@@ -229,7 +278,9 @@ def generateReport(req):
         'most_common_load_types': getTop3MostCommonLoadTypes(),
         'most_common_trailer_types': getTop3MostCommonTrailerTypes(),
         'top_used_cities': getTopUsedCities(),
-        'top_trip_routes': getTop3RoutesByPickupAndDropoff()
+        'top_trip_routes': getTop3RoutesByPickupAndDropoff(),
+        'top_dropoff_cities': getTopDropoffPlaces(),
+        'top_pickup_cities': getTopPickupPlaces()
     }
     # Generar strings para los top load types
     top_load_types = "\n".join([f"El tipo de carga {item['type']} aparece {item['count']} veces" for item in report_data['most_common_load_types']])
@@ -243,8 +294,14 @@ def generateReport(req):
     # Generar strings para las top trip routes
     top_trip_routes = "\n".join([f"La ruta de {item['pickup_city']} a {item['dropoff_city']} se ha realizado {item['count']} veces" for item in report_data['top_trip_routes']])
 
+    #Generar strings para las top dropff
+    top_dropoff_cities = "\n".join([f"El dropoff en {item['dropoff__city']}, aparece {item['count']} veces" for item in report_data['top_dropoff_cities']])
+
+    #Generar strings para las top pickup
+    top_pickup_cities = "\n".join([f"El pickup en {item['pickup__city']}, aparece {item['count']} veces" for item in report_data['top_pickup_cities']])
+    
     # Generar el string completo para el reporte
-    report_string = f"**Top Load Types:**\n{top_load_types}\n\n**Top Trailer Types:**\n{top_trailer_types}\n\n**Top Cities:**\n{top_cities}\n\n**Top Trip Routes:**\n{top_trip_routes}"
+    report_string = f"**Top Load Types:**\n{top_load_types}\n\n**Top Trailer Types:**\n{top_trailer_types}\n\n**Top Cities:**\n{top_cities}\n\n**Top Trip Routes:**\n{top_trip_routes} \n\n**Top Dropoff Places:**\n{top_dropoff_cities} \n\n**Top Pickup Places:**\n{top_pickup_cities}"
 
     send_email_alert(report_string)
 
