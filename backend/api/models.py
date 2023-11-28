@@ -43,10 +43,10 @@ class  Trailer(models.Model):
         UNAVAILABLE = 'UN', _('Unavailable') 
     
     plates=models.CharField(max_length=6,null=False)
-    capacity=models.IntegerField()
+    capacity=models.IntegerField(null=False)
     volume=models.IntegerField(null=True)
-    pickup=models.CharField(max_length=30)
-    dropoff=models.CharField(max_length=30)
+    pickup=models.CharField(max_length=200)
+    dropoff=models.CharField(max_length=200)
     status=models.CharField(max_length=2,choices=TrailerStatus.choices,default=TrailerStatus.AVAILABLE)
     type=models.CharField(max_length=2,choices=TrailerType.choices,default=TrailerType.ANY)
 
