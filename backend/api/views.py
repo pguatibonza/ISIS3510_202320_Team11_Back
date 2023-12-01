@@ -116,6 +116,10 @@ class UpdateTripStatusToDE(APIView):
             trip.status = 'DE'
             trip.save()
 
+            trailer=trip.trailer
+            trailer.status='AV'
+            trailer.save()
+
             # Serialize the updated trip data
             serializer = TripSerializer(trip)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -158,41 +162,31 @@ class TripUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
 
-class AssignTripTrailer(generics.UpdateAPIView):
-    queryset = Trip.objects.all()
-    serializer_class = AssignTripTrailerSerializer
-    lookup_url_kwarg = 'trip_id'
+class AssignTripToTrailer(APIView):
+    def get(self, request, trip_id):
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    def update(self, request, *args, **kwargs):
-        start_time = time.time()
-        trip = self.get_object()
-        serializer = AssignTripTrailerSerializer(data=request.data)
-        if serializer.is_valid():
-            # Valid trailer_id from the serializer
-            trailer_id = serializer.validated_data['trailer_id']
+        # Find the first available trailer with a driver
+        available_trailer = Trailer.objects.filter(status=Trailer.TrailerStatus.AVAILABLE, driver__isnull=False).first()
 
-            try:
-                # Check if the trailer exists
-                trailer = Trailer.objects.get(pk=trailer_id)
-            except Trailer.DoesNotExist:
-                return Response({'detail': 'Trailer not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not available_trailer:
+            return Response({"error": "No available trailer with a driver found"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Assign the trailer to the trip
-            trip.trailer = trailer
-            trip.save()
+        # Assign the trip to the available trailer
+        trip.trailer = available_trailer
+        trip.status = Trip.Status.INPROGESS
+        trip.save()
 
-            #Changes Trailer status
-            trailer.status = Trailer.TrailerStatus.INTRANSIT
-            trailer.save()
+        # Update the status of the trailer to Unavailable
+        available_trailer.status = Trailer.TrailerStatus.INTRANSIT
+        available_trailer.save()
 
-            end_time = time.time()
-            execution_time = int((end_time - start_time) * 1000)
-            ExecutionTime.objects.create(function="update-triptrailer-function", duration=execution_time)
+        return Response({"message": "Trip assigned successfully"}, status=status.HTTP_200_OK)
 
-            return Response({'detail': f'Trailer {trailer_id} assigned to trip {trip.id}.'}, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
 def getTop3MostCommonLoadTypes():
     retry_attempts = 3  # Number of retry attempts
     for attempt in range(retry_attempts):
