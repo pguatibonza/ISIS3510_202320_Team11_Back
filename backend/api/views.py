@@ -79,6 +79,7 @@ class AssignDriverToFirstNullTrailer(generics.UpdateAPIView):
 
         if trailer is not None:
             trailer.driver = user
+            trailer.status = 'AV'
             trailer.save()
 
             serializer = self.get_serializer(trailer)
