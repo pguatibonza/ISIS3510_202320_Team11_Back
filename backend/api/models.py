@@ -49,6 +49,7 @@ class  Trailer(models.Model):
     dropoff=models.CharField(max_length=200)
     status=models.CharField(max_length=2,choices=TrailerStatus.choices,default=TrailerStatus.AVAILABLE)
     type=models.CharField(max_length=2,choices=TrailerType.choices,default=TrailerType.ANY)
+    isAvailable=models.BooleanField(default=True)
 
     driver=models.OneToOneField(User,on_delete=models.CASCADE,related_name="TrailerAssigned",null=True)
 

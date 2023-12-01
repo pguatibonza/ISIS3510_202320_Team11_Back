@@ -54,6 +54,59 @@ class TrailersGetByOwnerId(generics.ListAPIView):
         owner_id = self.kwargs['owner']
         return Trailer.objects.filter(owner=owner_id)
 
+class TrailersGetByDriverId(generics.ListAPIView):
+    serializer_class = TrailerSerializer
+    lookup_field = 'driver'
+    
+    def get_queryset(self):
+        driver_id= self.kwargs['driver']
+        return Trailer.objects.filter(driver=driver_id)
+
+class AssignDriverToFirstNullTrailer(generics.UpdateAPIView):
+    serializer_class = TrailerSerializer
+
+    def update(self, request, *args, **kwargs):
+        # Assuming 'user_id' is passed in the request data
+        user_id = request.data.get('user_id')
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Find the first trailer with a null driver
+        trailer = Trailer.objects.filter(driver__isnull=True).first()
+
+        if trailer is not None:
+            trailer.driver = user
+            trailer.save()
+
+            serializer = self.get_serializer(trailer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({'detail': 'No trailer available for assignment.'}, status=status.HTTP_404_NOT_FOUND)
+
+class TrailerAssignedToDriver(generics.RetrieveAPIView):
+    serializer_class = TrailerSerializer
+
+    def get(self, request, *args, **kwargs):
+        driver_id = self.kwargs.get('driver_id')
+
+        try:
+            user = User.objects.get(id=driver_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'Driver not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Retrieve the trailer assigned to the driver
+            trailer = Trailer.objects.get(driver=user)
+            serializer = self.get_serializer(trailer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Trailer.DoesNotExist:
+            return Response({'detail': 'No trailer assigned to the driver.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+
 class AccessPointGetCreate(generics.ListCreateAPIView):
     queryset = AccessPoint.objects.all()
     serializer_class = AccessPointSerializer
