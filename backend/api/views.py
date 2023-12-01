@@ -332,13 +332,87 @@ def getTopPickupPlaces():
                 print("All attempts failed. Database is currently unreachable.")
                 # Consider raising an exception or logging the failure
                 return []  # Return empty list or handle as needed
+            
 
+def getInactiveUsersAfterOneMonth():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            # Calculate the date 29 to 31 days ago
+            threshold_date = timezone.now() - timezone.timedelta(days=31)
+
+            # Query the User model to get inactive users
+            inactive_users_data = User.objects.filter(last_login__range=[threshold_date, timezone.now() - timezone.timedelta(days=20)]) \
+                .values('email', 'name')
+
+            # You can perform additional processing on inactive_users_data if needed
+            return list(inactive_users_data)
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+def trips_by_trailer_id():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            trailer_trip_data = Trip.objects.values('trailer_id') \
+                .annotate(trip_count=Count('*')) \
+                .order_by('-trip_count')  # Get the count of trips for each trailer_id
+            return [
+                {
+                    'trailer_id': item['trailer_id'],
+                    'trip_count': item['trip_count']
+                }
+                for item in trailer_trip_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+from django.db.models import Sum, F
+
+def camiones_con_cargas_pesadas():
+    retry_attempts = 3  # Número de intentos de reintento
+    for intento in range(retry_attempts):
+        try:
+            camiones_cargas_pesadas = Trip.objects.filter(
+                load__weight__gt=1200
+            ).values('trailer_id').annotate(
+                total_carga=Sum(F('load__weight'))
+            ).order_by('-total_carga')  # Obtén el total de carga para cada trailer_id
+            return [
+                {
+                    'trailer_id': item['trailer_id'],
+                    'total_carga': item['total_carga']
+                }
+                for item in camiones_cargas_pesadas
+            ]
+        except OperationalError as e:
+            print(f"Falla en la consulta de la base de datos. Reintentando... Intento {intento + 1}")
+            if intento < retry_attempts - 1:
+                time.sleep(5)  # Espera antes de reintentar
+            else:
+                # Registra el error o maneja el fallo después de todos los intentos
+                print("Todos los intentos fallaron. La base de datos no está actualmente disponible.")
+                # Considera lanzar una excepción o registrar el fallo
+                return []  # Devuelve una lista vacía o maneja según sea necesario
 
         
 def generateReport(req):
     start_time = time.time()
     print("Generating report...")
-
     # Serialize the data into a JSON object
     report_data = {
         'most_common_load_types': getTop3MostCommonLoadTypes(),
@@ -346,8 +420,12 @@ def generateReport(req):
         'top_used_cities': getTopUsedCities(),
         'top_trip_routes': getTop3RoutesByPickupAndDropoff(),
         'top_dropoff_cities': getTopDropoffPlaces(),
-        'top_pickup_cities': getTopPickupPlaces()
+        'top_pickup_cities': getTopPickupPlaces(),
+        'one_month_inactive': getInactiveUsersAfterOneMonth(),
+        'trips_by_trailer': trips_by_trailer_id(),
+        'heaviest_loads': camiones_con_cargas_pesadas()
     }
+    print(report_data['heaviest_loads'])
     # Generar strings para los top load types
     top_load_types = "\n".join([f"El tipo de carga {item['type']} aparece {item['count']} veces" for item in report_data['most_common_load_types']])
 
@@ -365,9 +443,18 @@ def generateReport(req):
 
     #Generar strings para las top pickup
     top_pickup_cities = "\n".join([f"El pickup en {item['pickup__city']}, aparece {item['count']} veces" for item in report_data['top_pickup_cities']])
+   
+    #Generar strings para los inactivos
+    inactivos = "\n".join([f"El usuario {item['name']} con correo {item['email']} lleva 1 mes sin ingresar a la app" for item in report_data['one_month_inactive']])
     
+    #Generar strings para los más pesados
+    trips_by_trailer = "\n".join([f"El camion {item['trailer_id']} ha realizado {item['trip_count']} viajes" for item in report_data['trips_by_trailer']])
+    
+    #Generar strings para los más pesados
+    heaviest_loads = "\n".join([f"El camion {item['trailer_id']} ha llevado {item['total_carga']} kilogramos en sus viajes" for item in report_data['heaviest_loads']])
+
     # Generar el string completo para el reporte
-    report_string = f"**Top Load Types:**\n{top_load_types}\n\n**Top Trailer Types:**\n{top_trailer_types}\n\n**Top Cities:**\n{top_cities}\n\n**Top Trip Routes:**\n{top_trip_routes} \n\n**Top Dropoff Places:**\n{top_dropoff_cities} \n\n**Top Pickup Places:**\n{top_pickup_cities}"
+    report_string = f"**Top Load Types:**\n{top_load_types}\n\n**Top Trailer Types:**\n{top_trailer_types}\n\n**Top Cities:**\n{top_cities}\n\n**Top Trip Routes:**\n{top_trip_routes} \n\n**Top Dropoff Places:**\n{top_dropoff_cities} \n\n**Top Pickup Places:**\n{top_pickup_cities} \n\n**Inactivos:**\n{inactivos} \n\n**Viajes por camión:**\n{trips_by_trailer} \n\n**Camiones que han cargado más:**\n{heaviest_loads}"
 
     send_email_alert(report_string)
 
@@ -377,7 +464,7 @@ def generateReport(req):
     ExecutionTime.objects.create(function="generate-report-function", duration=execution_time)
 
     return response
-
+    
 
 def send_email_alert(report_string):
     recipients = ['juanddiaz13@gmail.com']  # List of recipients
