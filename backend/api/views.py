@@ -86,6 +86,7 @@ class AssignDriverToFirstNullTrailer(generics.UpdateAPIView):
         else:
             return Response({'detail': 'No trailer available for assignment.'}, status=status.HTTP_404_NOT_FOUND)
 
+
 class TrailerAssignedToDriver(generics.RetrieveAPIView):
     serializer_class = TrailerSerializer
 
@@ -105,7 +106,24 @@ class TrailerAssignedToDriver(generics.RetrieveAPIView):
         except Trailer.DoesNotExist:
             return Response({'detail': 'No trailer assigned to the driver.'}, status=status.HTTP_404_NOT_FOUND)
 
+class UpdateTripStatusToDE(APIView):
+    def put(self, request, trip_id, format=None):
+        try:
+            # Get the trip instance
+            trip = Trip.objects.get(id=trip_id)
 
+            # Update the status to 'DE'
+            trip.status = 'DE'
+            trip.save()
+
+            # Serialize the updated trip data
+            serializer = TripSerializer(trip)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Trip.DoesNotExist:
+            return Response({'error': 'Trip not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': f'Error updating trip status to DE: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class AccessPointGetCreate(generics.ListCreateAPIView):
     queryset = AccessPoint.objects.all()
