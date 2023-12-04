@@ -79,6 +79,7 @@ class AssignDriverToFirstNullTrailer(generics.UpdateAPIView):
 
         if trailer is not None:
             trailer.driver = user
+            trailer.status = 'AV'
             trailer.save()
 
             serializer = self.get_serializer(trailer)
@@ -115,6 +116,10 @@ class UpdateTripStatusToDE(APIView):
             # Update the status to 'DE'
             trip.status = 'DE'
             trip.save()
+
+            trailer=trip.trailer
+            trailer.status='AV'
+            trailer.save()
 
             # Serialize the updated trip data
             serializer = TripSerializer(trip)
@@ -158,41 +163,31 @@ class TripUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trip.objects.all()
     serializer_class = TripSerializer
 
-class AssignTripTrailer(generics.UpdateAPIView):
-    queryset = Trip.objects.all()
-    serializer_class = AssignTripTrailerSerializer
-    lookup_url_kwarg = 'trip_id'
+class AssignTripToTrailer(APIView):
+    def get(self, request, trip_id):
+        try:
+            trip = Trip.objects.get(id=trip_id)
+        except Trip.DoesNotExist:
+            return Response({"error": "Trip not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    def update(self, request, *args, **kwargs):
-        start_time = time.time()
-        trip = self.get_object()
-        serializer = AssignTripTrailerSerializer(data=request.data)
-        if serializer.is_valid():
-            # Valid trailer_id from the serializer
-            trailer_id = serializer.validated_data['trailer_id']
+        # Find the first available trailer with a driver
+        available_trailer = Trailer.objects.filter(status=Trailer.TrailerStatus.AVAILABLE, driver__isnull=False).first()
 
-            try:
-                # Check if the trailer exists
-                trailer = Trailer.objects.get(pk=trailer_id)
-            except Trailer.DoesNotExist:
-                return Response({'detail': 'Trailer not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not available_trailer:
+            return Response({"error": "No available trailer with a driver found"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Assign the trailer to the trip
-            trip.trailer = trailer
-            trip.save()
+        # Assign the trip to the available trailer
+        trip.trailer = available_trailer
+        trip.status = Trip.Status.INPROGESS
+        trip.save()
 
-            #Changes Trailer status
-            trailer.status = Trailer.TrailerStatus.INTRANSIT
-            trailer.save()
+        # Update the status of the trailer to Unavailable
+        available_trailer.status = Trailer.TrailerStatus.INTRANSIT
+        available_trailer.save()
 
-            end_time = time.time()
-            execution_time = int((end_time - start_time) * 1000)
-            ExecutionTime.objects.create(function="update-triptrailer-function", duration=execution_time)
+        return Response({"message": "Trip assigned successfully"}, status=status.HTTP_200_OK)
 
-            return Response({'detail': f'Trailer {trailer_id} assigned to trip {trip.id}.'}, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
 def getTop3MostCommonLoadTypes():
     retry_attempts = 3  # Number of retry attempts
     for attempt in range(retry_attempts):
@@ -337,13 +332,87 @@ def getTopPickupPlaces():
                 print("All attempts failed. Database is currently unreachable.")
                 # Consider raising an exception or logging the failure
                 return []  # Return empty list or handle as needed
+            
 
+def getInactiveUsersAfterOneMonth():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            # Calculate the date 29 to 31 days ago
+            threshold_date = timezone.now() - timezone.timedelta(days=31)
+
+            # Query the User model to get inactive users
+            inactive_users_data = User.objects.filter(last_login__range=[threshold_date, timezone.now() - timezone.timedelta(days=20)]) \
+                .values('email', 'name')
+
+            # You can perform additional processing on inactive_users_data if needed
+            return list(inactive_users_data)
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+def trips_by_trailer_id():
+    retry_attempts = 3  # Number of retry attempts
+    for attempt in range(retry_attempts):
+        try:
+            trailer_trip_data = Trip.objects.values('trailer_id') \
+                .annotate(trip_count=Count('*')) \
+                .order_by('-trip_count')  # Get the count of trips for each trailer_id
+            return [
+                {
+                    'trailer_id': item['trailer_id'],
+                    'trip_count': item['trip_count']
+                }
+                for item in trailer_trip_data
+            ]
+        except OperationalError as e:
+            print(f"Database query failed. Retrying... Attempt {attempt + 1}")
+            if attempt < retry_attempts - 1:
+                time.sleep(5)  # Wait before retrying
+            else:
+                # Log error or handle failure after all attempts
+                print("All attempts failed. Database is currently unreachable.")
+                # Consider raising an exception or logging the failure
+                return []  # Return empty list or handle as needed
+
+from django.db.models import Sum, F
+
+def camiones_con_cargas_pesadas():
+    retry_attempts = 3  # Número de intentos de reintento
+    for intento in range(retry_attempts):
+        try:
+            camiones_cargas_pesadas = Trip.objects.filter(
+                load__weight__gt=1200
+            ).values('trailer_id').annotate(
+                total_carga=Sum(F('load__weight'))
+            ).order_by('-total_carga')  # Obtén el total de carga para cada trailer_id
+            return [
+                {
+                    'trailer_id': item['trailer_id'],
+                    'total_carga': item['total_carga']
+                }
+                for item in camiones_cargas_pesadas
+            ]
+        except OperationalError as e:
+            print(f"Falla en la consulta de la base de datos. Reintentando... Intento {intento + 1}")
+            if intento < retry_attempts - 1:
+                time.sleep(5)  # Espera antes de reintentar
+            else:
+                # Registra el error o maneja el fallo después de todos los intentos
+                print("Todos los intentos fallaron. La base de datos no está actualmente disponible.")
+                # Considera lanzar una excepción o registrar el fallo
+                return []  # Devuelve una lista vacía o maneja según sea necesario
 
         
 def generateReport(req):
     start_time = time.time()
     print("Generating report...")
-
     # Serialize the data into a JSON object
     report_data = {
         'most_common_load_types': getTop3MostCommonLoadTypes(),
@@ -351,8 +420,12 @@ def generateReport(req):
         'top_used_cities': getTopUsedCities(),
         'top_trip_routes': getTop3RoutesByPickupAndDropoff(),
         'top_dropoff_cities': getTopDropoffPlaces(),
-        'top_pickup_cities': getTopPickupPlaces()
+        'top_pickup_cities': getTopPickupPlaces(),
+        'one_month_inactive': getInactiveUsersAfterOneMonth(),
+        'trips_by_trailer': trips_by_trailer_id(),
+        'heaviest_loads': camiones_con_cargas_pesadas()
     }
+    print(report_data['heaviest_loads'])
     # Generar strings para los top load types
     top_load_types = "\n".join([f"El tipo de carga {item['type']} aparece {item['count']} veces" for item in report_data['most_common_load_types']])
 
@@ -370,9 +443,18 @@ def generateReport(req):
 
     #Generar strings para las top pickup
     top_pickup_cities = "\n".join([f"El pickup en {item['pickup__city']}, aparece {item['count']} veces" for item in report_data['top_pickup_cities']])
+   
+    #Generar strings para los inactivos
+    inactivos = "\n".join([f"El usuario {item['name']} con correo {item['email']} lleva 1 mes sin ingresar a la app" for item in report_data['one_month_inactive']])
     
+    #Generar strings para los más pesados
+    trips_by_trailer = "\n".join([f"El camion {item['trailer_id']} ha realizado {item['trip_count']} viajes" for item in report_data['trips_by_trailer']])
+    
+    #Generar strings para los más pesados
+    heaviest_loads = "\n".join([f"El camion {item['trailer_id']} ha llevado {item['total_carga']} kilogramos en sus viajes" for item in report_data['heaviest_loads']])
+
     # Generar el string completo para el reporte
-    report_string = f"**Top Load Types:**\n{top_load_types}\n\n**Top Trailer Types:**\n{top_trailer_types}\n\n**Top Cities:**\n{top_cities}\n\n**Top Trip Routes:**\n{top_trip_routes} \n\n**Top Dropoff Places:**\n{top_dropoff_cities} \n\n**Top Pickup Places:**\n{top_pickup_cities}"
+    report_string = f"**Top Load Types:**\n{top_load_types}\n\n**Top Trailer Types:**\n{top_trailer_types}\n\n**Top Cities:**\n{top_cities}\n\n**Top Trip Routes:**\n{top_trip_routes} \n\n**Top Dropoff Places:**\n{top_dropoff_cities} \n\n**Top Pickup Places:**\n{top_pickup_cities} \n\n**Inactivos:**\n{inactivos} \n\n**Viajes por camión:**\n{trips_by_trailer} \n\n**Camiones que han cargado más:**\n{heaviest_loads}"
 
     send_email_alert(report_string)
 
@@ -382,7 +464,7 @@ def generateReport(req):
     ExecutionTime.objects.create(function="generate-report-function", duration=execution_time)
 
     return response
-
+    
 
 def send_email_alert(report_string):
     recipients = ['juanddiaz13@gmail.com']  # List of recipients

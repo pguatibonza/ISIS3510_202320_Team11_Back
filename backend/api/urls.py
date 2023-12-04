@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 from django.urls.conf import include
-from .views import AssignDriverToFirstNullTrailer, LoadGetCreate,LoadUpdateDelete, TrailerAssignedToDriver,TrailerGetCreate, TrailersGetByDriverId,TrailersGetByOwnerId,TrailerUpdateDelete,AccessPointGetCreate,AccessPointUpdateDelete,TripGetCreate,TripUpdateDelete, AssignTripTrailer, UpdateTripStatusToDE,UserGetCreate,UserUpdateDelete,UserGetByEmail, generateReport, TripsGetByTrailerId,TripsByTrailerStatusView
+from .views import AssignDriverToFirstNullTrailer, LoadGetCreate,LoadUpdateDelete, TrailerAssignedToDriver,TrailerGetCreate, TrailersGetByDriverId,TrailersGetByOwnerId,TrailerUpdateDelete,AccessPointGetCreate,AccessPointUpdateDelete,TripGetCreate,TripUpdateDelete, AssignTripToTrailer, UpdateTripStatusToDE,UserGetCreate,UserUpdateDelete,UserGetByEmail, generateReport, TripsGetByTrailerId,TripsByTrailerStatusView
 urlpatterns = [
     # path('',UserGetCreate.as_view()), 
      path('users',UserGetCreate.as_view()), 
@@ -34,7 +34,7 @@ urlpatterns = [
     path('trips/updateStatus/<int:trip_id>', UpdateTripStatusToDE.as_view(), name='update_trip_status_to_de'),
 
 
-    path('assign-trailer/<int:trip_id>/', AssignTripTrailer.as_view()),
+    path('trips/assignTrailer/<int:trip_id>', AssignTripToTrailer.as_view()),
 
     path('generate-report/', generateReport, name='generate_report'),
 
